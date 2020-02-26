@@ -1,0 +1,140 @@
+body {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0;
+}
+
+button {
+  min-width: 100px;
+  min-height: 40px;
+}
+
+input[type="checkbox"] {
+  min-width: 30px;
+  min-height: 30px;
+  vertical-align: middle;
+}
+
+#fps_parent {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: middle;
+}
+
+select {
+  min-width: 100px;
+  min-height: 40px;
+}
+
+.basic-info {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  border: 1px solid black;
+}
+
+.player-select {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid black;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+#controls {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: auto;
+  flex-wrap: wrap;
+}
+#controls * {
+  margin: 5px;
+}
+
+#keyboard-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border: 1px solid black;
+}
+
+#keyboard-controls-list {
+  flex: 2 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  div {
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+  }
+}
+
+#keyboard-controls-label {
+  flex: 1 1 auto;
+}
+
+#checkboxes {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+#debugging-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#container {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+#inner-container {
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  width: 100%;
+  height: 100%;
+  align-items: stretch;
+}
+
+.canvas-container {
+  flex: 1 1 auto;
+  position: relative;
+}
+
+canvas {
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  background-color: #000;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+}

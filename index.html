@@ -1,0 +1,116 @@
+<html>
+<meta name="viewport"
+      content="width=device-width,height=device-height,initial-scale=1,user-scalable=yes">
+<head>
+<script src="imports/lodash.js"></script>
+<script src="util.js"></script>
+<script src="bitmanager.js"></script>
+<script src="canvaswrapper.js"></script>
+<link href="main.css" rel="stylesheet" type="text/css">
+</head>
+<body onload="init()">
+  <div id="container">
+    <div id="controls">
+      <div class=basic-info>
+        <div class=player-select>
+          <label for="select_left_player_human">
+            <input type="radio" id="select_left_player_human" name="left_player"
+                   value="human" onclick="playerToggled('left')">
+            </input>
+            Left player human
+          </label>
+          <label for="select_left_player">
+            <input type="radio" id="select_left_player_ai" name="left_player"
+                   value="ai" onclick="playerToggled('left')" checked>
+            </input>
+            Left player AI
+          </label>
+        </div>
+        <div class=player-select>
+          <label for="select_right_player_human">
+            <input type="radio" id="select_right_player_human"
+                   name="right_player"
+                   value="human" onclick="playerToggled('right')">
+            </input>
+            Right player human
+          </label>
+          <label for="select_right_player">
+            <input type="radio" id="select_right_player_ai" name="right_player"
+                   value="ai" onclick="playerToggled('right')" checked>
+            </input>
+            Right player AI
+          </label>
+        </div>
+        <div id="keyboard-info">
+          <div id="keyboard-controls-label">
+            Keyboard controls:
+          </div>
+          <div id="keyboard-controls-list">
+            <div>
+              Left player: w/s
+            </div>
+            <div>
+              Right player: arrows
+            </div>
+            <div>
+              Pause/continue: space
+            </div>
+          </div>
+        </div>
+        <div id="checkboxes">
+          <label for="toggle_obvious">
+            <input type="checkbox" id="toggle_obvious"
+                   onclick="showObviousToggled()">
+            </input>
+            Use more revealing colors
+          </label>
+          <label for="toggle_debug_controls">
+            <input type="checkbox" id="toggle_debug_controls"
+                   onclick="showDebugControlsToggled()">
+            </input>
+            Show debugging controls
+          </label>
+          <a href="https://github.com/ericu/CellCulTuring">Source</a>
+        </div>
+      </div>
+      <div id="debugging-controls" style="display: none">
+        <button type="button" onclick="toggleRun()" id="toggle_run">
+          toggleRun
+        </button>
+        <div id="fps_parent">
+          <span>FPS: </span>
+          <span id="fps">0.0</span>
+        </div>
+        <button type="button" onclick="step()">step</button>
+        <button type="button" onclick="test()">test</button>
+        <label for="toggle_test">
+          <input type="checkbox" id="toggle_test"
+                 onclick="showTestToggled()">
+          </input>
+          Show test canvas
+        </label>
+        <label for="toggle_debug">
+          <input type="checkbox" id="toggle_debug"
+                 onclick="showDebugToggled()">
+          </input>
+          Show debug area
+        </label>
+      </div>
+    </div>
+    <div id="inner-container">
+      <div id="canvas-container" class="canvas-container">
+        <canvas id="canvas" width="76" height="70"></canvas>
+      </div>
+      <div id="canvas2-container" class="canvas-container">
+        <canvas id="canvas2"></canvas>
+      </div>
+      <textarea rows="40" cols="40" id="debug"></textarea>
+    </div>
+  </div>
+  <script src="main.js"></script>
+  <script src="keyboard.js"></script>
+  <script src="scoreboard.js"></script>
+
+  <script src="pong.js"></script>
+</body>
+</html>
