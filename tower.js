@@ -7,6 +7,7 @@ let bm;
   let nsNonScenery; // creep, tower, weapon
   let nsGlobal;
   let isWall, isBackground, isCreep, isTower, isWeapon;
+  let MAX_CREEP_GENERATION;
   let isScoreboard;
   let copySets = {};
   const SCOREBOARD_HEIGHT = 0;
@@ -29,7 +30,7 @@ let bm;
       nsGlobal.alias('BASIC_BACKGROUND', 'FULL_ALPHA');
     } else {
       nsGlobal.declare('FULL_ALPHA', 2, 30);
-      nsGlobal.alloc('BASIC_BACKGROUND', 0, 0);
+      nsGlobal.alloc('BASIC_BACKGROUND', 0);
     }
 
     nsGlobal.declare('IS_SCENERY', 1, 24);
@@ -37,8 +38,8 @@ let bm;
     nsScenery = nsGlobal.declareSubspace('SCENERY', 'IS_SCENERY');
     nsNonScenery = nsGlobal.declareSubspace('NONSCENERY', 0);
 
-    nsNonScenery.declare('ID_0', 1, 15);
-    nsNonScenery.declare('ID_1', 1, 7);
+    nsNonScenery.declare('ID_0', 1, 7);
+    nsNonScenery.declare('ID_1', 1, 15);
 
     nsNonScenery.alias('CREEP_FLAG', 'ID_0');
     nsNonScenery.alias('WEAPON_FLAG', 'ID_1');
@@ -50,15 +51,24 @@ let bm;
     nsTower = nsNonScenery.declareSubspace('TOWER', 'TOWER_FLAG');
     const nsUnused = nsNonScenery.declareSubspace('UNUSED', 0);
 
-    nsScenery.declare('IS_WALL', 2, 14);
+    // TODO: Standardize on IS_FOO or FOO_FLAG?
+    isCreep = getHasValueFunction(bm.or([nsGlobal.IS_SCENERY.getMask(),
+                                         nsNonScenery.CREEP_FLAG.getMask()]),
+                                  nsNonScenery.CREEP_FLAG.getMask());
+    nsScenery.declare('IS_WALL', 1, 15);
     nsScenery.setSubspaceMask('IS_WALL');
     nsWall = nsScenery.declareSubspace('WALL', 'IS_WALL');
     nsScoreboard = nsScenery.declareSubspace('SCOREBOARD', 0);
 
     isWall = getHasValueFunction(bm.or([nsGlobal.IS_SCENERY.getMask(),
-                                       nsGlobal.IS_SCENERY.getMask()]),
-                                 bm.or([nsScenery.IS_WALL.getMask(),
+                                       nsScenery.IS_WALL.getMask()]),
+                                 bm.or([nsGlobal.IS_SCENERY.getMask(),
                                        nsScenery.IS_WALL.getMask()]));
+
+    let CREEP_GENERATION_BITS = 2;
+    nsCreep.alloc('GENERATION', CREEP_GENERATION_BITS)
+    MAX_CREEP_GENERATION = (1 << CREEP_GENERATION_BITS) - 1;
+
     // TODO
     /*
     initScoreboard(nsScoreboard, nsGlobal.IS_NOT_BACKGROUND.getMask(),
@@ -93,6 +103,12 @@ let bm;
     }
   }
 
+  function newCreepColor() {
+    return bm.or([nsGlobal.FULL_ALPHA.getMask(),
+                  nsNonScenery.CREEP_FLAG.getMask(),
+                  nsCreep.GENERATION.getMask()])
+  }
+
   function initTower(c, originX, originY, width, height, obviousColors) {
     const gameOriginX = originX;
     const gameOriginY = originY + SCOREBOARD_HEIGHT;
@@ -121,6 +137,8 @@ let bm;
       c.strokeRect(color, gameWidth - wallWidth,
                    originY + (2 * (i + 1)) * spacing, wallWidth, 1);
     }
+
+    c.fillRect(newCreepColor(), 3, Math.round(spacing / 2), 1, 1)
 /* TODO: initScoreboard first.
     drawScoreboard(c, originX + 1, originY + 1,
                    SCOREBOARD_WIDTH - 2, SCOREBOARD_HEIGHT - 1);
@@ -132,8 +150,33 @@ let bm;
                  */
   }
 
-
   function handleWall(data, x, y) {
+    return data[4];
+  }
+
+  function getCreepGeneration(packed) {
+    return nsCreep.GENERATION.get(packed);
+  }
+  function setCreepGeneration(packed, value) {
+    return nsCreep.GENERATION.set(packed, value);
+  }
+
+  function handleCreep(data, x, y) {
+    const current = data[4];
+    let counter = getCreepGeneration(current);
+    if (--counter <= 0) {
+      return nsGlobal.BASIC_BACKGROUND.getMask();
+    } else {
+      return setCreepGeneration(current, counter);
+    }
+  }
+
+  function handleBackground(data, x, y) {
+    for (let value of data) {
+      if (isCreep(value) && getCreepGeneration(value) == MAX_CREEP_GENERATION) {
+        return newCreepColor();
+      }
+    }
     return data[4];
   }
 
@@ -149,8 +192,11 @@ let bm;
       return handleWall(data, x, y);
     }
 
-    // Background
-    return data[4];
+    if (isCreep(current)) {
+      return handleCreep(data, x, y);
+    }
+
+    return handleBackground(data, x, y);
   }
 
   let width = 100;

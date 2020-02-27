@@ -37,7 +37,7 @@
     canvas2.addEventListener('click', onCanvasClicked);
     window.addEventListener('resize', resizeCanvasCSS);
     initAnimation();
-    toggleRun();
+//    toggleRun();
   }
   window.init = init;
 
