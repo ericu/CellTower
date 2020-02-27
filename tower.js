@@ -112,6 +112,15 @@ let bm;
     c.strokeRect(color, originX, originY,
                  gameWidth, gameHeight + SCOREBOARD_HEIGHT);
 
+    let passages = 5
+    let spacing = Math.floor(gameHeight / (passages + 0.5) / 2);
+    let wallWidth = Math.floor(gameWidth * 0.9);
+    for (let i = 0; i < passages; ++i) {
+      c.strokeRect(color, originX, originY + (2 * i + 1) * spacing,
+                   wallWidth, 1);
+      c.strokeRect(color, gameWidth - wallWidth,
+                   originY + (2 * (i + 1)) * spacing, wallWidth, 1);
+    }
 /* TODO: initScoreboard first.
     drawScoreboard(c, originX + 1, originY + 1,
                    SCOREBOARD_WIDTH - 2, SCOREBOARD_HEIGHT - 1);
