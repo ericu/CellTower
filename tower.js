@@ -25,10 +25,10 @@ let bm;
     // it's just not anything else.
 
     if (obviousColors) {
-      nsGlobal.declare('FULL_ALPHA', 3, 28);
+      nsGlobal.declare('FULL_ALPHA', 3, 29);
       nsGlobal.alias('BASIC_BACKGROUND', 'FULL_ALPHA');
     } else {
-      nsGlobal.declare('FULL_ALPHA', 2, 29);
+      nsGlobal.declare('FULL_ALPHA', 2, 30);
       nsGlobal.alloc('BASIC_BACKGROUND', 0, 0);
     }
 
@@ -50,7 +50,7 @@ let bm;
     nsTower = nsNonScenery.declareSubspace('TOWER', 'TOWER_FLAG');
     const nsUnused = nsNonScenery.declareSubspace('UNUSED', 0);
 
-    nsScenery.declare('IS_WALL', 1, 15);
+    nsScenery.declare('IS_WALL', 2, 14);
     nsScenery.setSubspaceMask('IS_WALL');
     nsWall = nsScenery.declareSubspace('WALL', 'IS_WALL');
     nsScoreboard = nsScenery.declareSubspace('SCOREBOARD', 0);
@@ -101,11 +101,6 @@ let bm;
 
     initBitManager(obviousColors);
 
-    let leftScoreboardRightEdge = originX + SCOREBOARD_WIDTH - 1;
-    let rightScoreboardLeftEdge = originX + width - SCOREBOARD_WIDTH;
-    let leftRespawnDownPathX = leftScoreboardRightEdge - 2;
-    let rightRespawnDownPathX = rightScoreboardLeftEdge + 2;
-
     // background
     let background = nsGlobal.BASIC_BACKGROUND.getMask();
     c.fillRect(background, 0, 0, canvas.width, canvas.height);
@@ -115,13 +110,7 @@ let bm;
                        nsScenery.IS_WALL.getMask(),
                        nsGlobal.FULL_ALPHA.getMask()]);
     c.strokeRect(color, originX, originY,
-                 SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT + 1);
-    c.strokeRect(color, originX + width - SCOREBOARD_WIDTH, originY,
-                 SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT + 1);
-    c.strokeRect(color, originX, originY,
-                 width, SCOREBOARD_HEIGHT + 1);
-    c.strokeRect(color, gameOriginX, gameOriginY,
-                 gameWidth, gameHeight);
+                 gameWidth, gameHeight + SCOREBOARD_HEIGHT);
 
 /* TODO: initScoreboard first.
     drawScoreboard(c, originX + 1, originY + 1,
