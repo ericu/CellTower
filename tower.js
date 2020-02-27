@@ -9,8 +9,8 @@ let bm;
   let isWall, isBackground, isCreep, isTower, isWeapon;
   let isScoreboard;
   let copySets = {};
-  const SCOREBOARD_HEIGHT = 12;  // 10x15 looks good
-  const SCOREBOARD_WIDTH = 18;
+  const SCOREBOARD_HEIGHT = 0;
+  const SCOREBOARD_WIDTH = 0;
 
   function initBitManager(obviousColors) {
     nsGlobal = new Namespace();
