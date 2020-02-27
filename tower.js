@@ -24,11 +24,11 @@ let bm;
     // whatever's moving through it, it probably doesn't need anything at all,
     // it's just not anything else.
 
-    nsGlobal.declare('FULL_ALPHA', 2, 29);
     if (obviousColors) {
       nsGlobal.declare('FULL_ALPHA', 3, 28);
       nsGlobal.alias('BASIC_BACKGROUND', 'FULL_ALPHA');
     } else {
+      nsGlobal.declare('FULL_ALPHA', 2, 29);
       nsGlobal.alloc('BASIC_BACKGROUND', 0, 0);
     }
 
@@ -40,7 +40,6 @@ let bm;
     nsNonScenery.declare('ID_0', 1, 15);
     nsNonScenery.declare('ID_1', 1, 7);
 
-    // Sentinel bits that determine type [if all zero, unused so far]:
     nsNonScenery.alias('CREEP_FLAG', 'ID_0');
     nsNonScenery.alias('WEAPON_FLAG', 'ID_1');
     nsNonScenery.combine('ID_BITS', ['ID_0', 'ID_1']);
@@ -49,44 +48,15 @@ let bm;
     nsCreep = nsNonScenery.declareSubspace('CREEP', 'CREEP_FLAG');
     nsWeapon = nsNonScenery.declareSubspace('WEAPON', 'WEAPON_FLAG');
     nsTower = nsNonScenery.declareSubspace('TOWER', 'TOWER_FLAG');
+    const nsUnused = nsNonScenery.declareSubspace('UNUSED', 0);
 
     nsScenery.declare('IS_WALL', 1, 15);
+    nsScenery.setSubspaceMask('IS_WALL');
     nsWall = nsScenery.declareSubspace('WALL', 'IS_WALL');
     nsScoreboard = nsScenery.declareSubspace('SCOREBOARD', 0);
 
-    // Message fields shared by wall and background
-    nsWall.alloc('MESSAGE_R_NOT_L', 1);
-    if (obviousColors) {
-      nsWall.declare('MESSAGE_PRESENT', 1, 14);
-    } else {
-      nsWall.alloc('MESSAGE_PRESENT', 1);
-    }
-
-    nsWall.alloc('LISTEN_DOWN', 1);
-    nsWall.alloc('LISTEN_UP_FOR_L', 1);
-    nsWall.alloc('LISTEN_UP_FOR_R', 1);
-    if (obviousColors) {
-      nsWall.alloc('LISTEN_RIGHT_FOR_R', 1);
-      nsWall.alloc('LISTEN_LEFT_FOR_L', 1);
-      nsWall.alloc('LISTEN_LEFT', 1);
-      nsWall.alloc('LISTEN_RIGHT', 1);
-    } else {
-      nsWall.declare('LISTEN_RIGHT_FOR_R', 1, 17);
-      nsWall.declare('LISTEN_LEFT_FOR_L', 1, 18);
-      nsWall.declare('LISTEN_LEFT', 1, 19);
-      nsWall.declare('LISTEN_RIGHT', 1, 20);
-    }
-    nsWall.alloc('TALK_DOWN_FOR_L', 1);
-    nsWall.alloc('TALK_DOWN_FOR_R', 1);
-    nsWall.alloc('SIDE_WALL_FLAG', 1);
-    if (obviousColors) {
-      nsWall.alloc('LISTEN_SIDE_FOR_GAME_OVER', 1);
-    } else {
-      nsWall.declare('LISTEN_SIDE_FOR_GAME_OVER', 1, 16);
-    }
-
     isWall = getHasValueFunction(bm.or([nsGlobal.IS_SCENERY.getMask(),
-                                       nsScenery.IS_SCENERY.getMask()]),
+                                       nsGlobal.IS_SCENERY.getMask()]),
                                  bm.or([nsScenery.IS_WALL.getMask(),
                                        nsScenery.IS_WALL.getMask()]));
     // TODO
@@ -96,15 +66,6 @@ let bm;
                    isSendingMessageDown, isSignallingGameOver, obviousColors);
     */
     nsGlobal.dumpStatus();
-  }
-
-  function isSendingMessageDown(c) {
-    return isSendingLeftMessageDown(c) || isSendingRightMessageDown(c);
-  }
-
-  function isSignallingGameOver(c) {
-    return isWall(c) && nsWall.LISTEN_SIDE_FOR_GAME_OVER.isSet(c) &&
-      nsWall.MESSAGE_PRESENT.isSet(c);
   }
 
   function sourceDirectionFromIndex(i) {
@@ -132,7 +93,12 @@ let bm;
     }
   }
 
-  function initPong(c, originX, originY, width, height, obviousColors) {
+  function initTower(c, originX, originY, width, height, obviousColors) {
+    const gameOriginX = originX;
+    const gameOriginY = originY + SCOREBOARD_HEIGHT;
+    const gameWidth = width;
+    const gameHeight = height - SCOREBOARD_HEIGHT;
+
     initBitManager(obviousColors);
 
     let leftScoreboardRightEdge = originX + SCOREBOARD_WIDTH - 1;
@@ -141,13 +107,13 @@ let bm;
     let rightRespawnDownPathX = rightScoreboardLeftEdge + 2;
 
     // background
-    let background = nsBackground.BASIC_BACKGROUND.getMask();
+    let background = nsGlobal.BASIC_BACKGROUND.getMask();
     c.fillRect(background, 0, 0, canvas.width, canvas.height);
 
     // walls
-    let color = bm.or([nsGlobal.IS_NOT_BACKGROUND.getMask(),
-                       nsNonbackground.WALL_FLAG.getMask(),
-                       nsNonbackground.FULL_ALPHA.getMask()]);
+    let color = bm.or([nsGlobal.IS_SCENERY.getMask(),
+                       nsScenery.IS_WALL.getMask(),
+                       nsGlobal.FULL_ALPHA.getMask()]);
     c.strokeRect(color, originX, originY,
                  SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT + 1);
     c.strokeRect(color, originX + width - SCOREBOARD_WIDTH, originY,
@@ -156,21 +122,8 @@ let bm;
                  width, SCOREBOARD_HEIGHT + 1);
     c.strokeRect(color, gameOriginX, gameOriginY,
                  gameWidth, gameHeight);
-    c.orRect(nsWall.SIDE_WALL_FLAG.getMask(),
-             gameOriginX, gameOriginY + 1, 1, gameHeight - 2);
-    c.orRect(nsWall.LISTEN_DOWN.getMask(),
-             originX, originY, 1, height - 1);
-    c.orRect(nsWall.SIDE_WALL_FLAG.getMask(),
-             gameOriginX + gameWidth - 1, gameOriginY + 1, 1, gameHeight - 2);
-    c.orRect(nsWall.LISTEN_DOWN.getMask(),
-             originX + width - 1, originY, 1, height - 1);
 
-    c.orRect(nsWall.LISTEN_LEFT.getMask(),
-             originX + 1, originY, rightScoreboardLeftEdge - originX + 1, 1);
-    c.orRect(nsWall.LISTEN_RIGHT.getMask(),
-             leftScoreboardRightEdge - 1, originY,
-             width - SCOREBOARD_WIDTH + 1, 1);
-
+/* TODO: initScoreboard first.
     drawScoreboard(c, originX + 1, originY + 1,
                    SCOREBOARD_WIDTH - 2, SCOREBOARD_HEIGHT - 1);
     drawScoreboard(c, rightScoreboardLeftEdge + 1, originY + 1,
@@ -178,25 +131,32 @@ let bm;
     drawGameOver(c, leftScoreboardRightEdge + 1, originY + 1,
                  rightScoreboardLeftEdge - leftScoreboardRightEdge - 1,
                  SCOREBOARD_HEIGHT - 1);
+                 */
   }
 
-  function pong(data, x, y) {
+
+  function handleWall(data, x, y) {
+    return data[4];
+  }
+
+  function tower(data, x, y) {
     const current = data[4];
     let v;
 
-    if (isScoreboard(current)) {
-      return handleScoreboard(data, x, y);
-    }
+//    if (isScoreboard(current)) {
+//      return handleScoreboard(data, x, y);
+//    }
 
     if (isWall(current)) {
       return handleWall(data, x, y);
     }
 
-    // TODO
+    // Background
+    return data[4];
   }
 
-  let width = DESIRED_BALL_AREA_WIDTH + 4; // 2x trough, 2x wall
-  let height = DESIRED_BALL_AREA_HEIGHT + 2 + SCOREBOARD_HEIGHT; // 2x wall
-  registerAnimation("pong", width, height, initPong, pong);
+  let width = 100;
+  let height = 100 + SCOREBOARD_HEIGHT; // 2x wall
+  registerAnimation("tower", width, height, initTower, tower);
 
 })();
