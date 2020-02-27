@@ -138,6 +138,10 @@ let bm;
                    originY + (2 * (i + 1)) * spacing, wallWidth, 1);
     }
 
+    c.fillRect(background,
+               Math.round(canvas.width / 4), Math.round(4.5 * spacing),
+               spacing, spacing);
+
     c.fillRect(newCreepColor(), 3, Math.round(spacing / 2), 1, 1)
 /* TODO: initScoreboard first.
     drawScoreboard(c, originX + 1, originY + 1,
@@ -172,9 +176,13 @@ let bm;
   }
 
   function handleBackground(data, x, y) {
-    for (let value of data) {
-      if (isCreep(value) && getCreepGeneration(value) == MAX_CREEP_GENERATION) {
-        return newCreepColor();
+    for (let index in data) {
+      if (index % 2) {
+        let value = data[index];
+        if (isCreep(value) &&
+            getCreepGeneration(value) == MAX_CREEP_GENERATION) {
+          return newCreepColor();
+        }
       }
     }
     return data[4];
