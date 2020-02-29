@@ -63,7 +63,7 @@ let bm;
     nsWeapon = nsNonScenery.declareSubspace('WEAPON', 'WEAPON_FLAG');
     nsTower = nsNonScenery.declareSubspace('TOWER', 'TOWER_FLAG');
     const nsUnused = nsNonScenery.declareSubspace('UNUSED', 0);
-    nsScenery.declare('WALL_FLAG', 1, 15);
+    nsScenery.declare('WALL_FLAG', 2, 6);
     nsScenery.setSubspaceMask('WALL_FLAG');
     nsWall = nsScenery.declareSubspace('WALL', 'WALL_FLAG');
     nsScoreboard = nsScenery.declareSubspace('SCOREBOARD', 0);
@@ -87,11 +87,11 @@ let bm;
     MAX_CREEP_GENERATION = (1 << CREEP_GENERATION_BITS) - 1;
 
     let CREEP_HP_BITS = 3;
-    nsCreep.alloc('HP', CREEP_HP_BITS)
+    nsCreep.declare('HP', CREEP_HP_BITS, 21)
     MAX_CREEP_HP = (1 << CREEP_HP_BITS) - 1;
 
     let WEAPON_GENERATION_BITS = 3;
-    nsWeapon.alloc('GENERATION', WEAPON_GENERATION_BITS)
+    nsWeapon.declare('GENERATION', WEAPON_GENERATION_BITS, 12)
     MAX_WEAPON_GENERATION = (1 << WEAPON_GENERATION_BITS) - 1;
     // Currently we limit weapons to 4 directions; we could add more.
     nsWeapon.alloc('DIRECTION', 2); // up, right, down, left
@@ -99,7 +99,7 @@ let bm;
     nsWeapon.alloc('DAMAGE', WEAPON_DAMAGE_BITS);
     MAX_WEAPON_DAMAGE = (1 << WEAPON_DAMAGE_BITS) - 1;
 
-    nsTower.alloc('TOWER_ID', 1)
+    nsTower.declare('TOWER_ID', 2, 13)
     nsTower.alias('WEAPON_TOWER_FLAG', 'TOWER_ID')
     nsTower.setSubspaceMask('TOWER_ID');
     nsWeaponTower = nsTower.declareSubspace('WEAPON_TOWER', 'TOWER_ID');
