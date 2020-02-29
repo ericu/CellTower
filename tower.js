@@ -101,7 +101,7 @@ let bm;
     nsWeapon.alloc('DAMAGE', WEAPON_DAMAGE_BITS);
     MAX_WEAPON_DAMAGE = (1 << WEAPON_DAMAGE_BITS) - 1;
 
-    let TOWER_COUNTER_BITS = 5;
+    let TOWER_COUNTER_BITS = 6;
     nsTower.alloc('COUNTER', TOWER_COUNTER_BITS);
     MAX_TOWER_COUNTER = (1 << TOWER_COUNTER_BITS) - 1;
 
@@ -206,9 +206,9 @@ let bm;
   function newWeaponColor(dX, dY, currentPhase) {
     let packed = bm.or([nsGlobal.FULL_ALPHA.getMask(),
                         nsNonScenery.WEAPON_FLAG.getMask(),
-                        nsWeapon.GENERATION.getMask(),
-                        nsWeapon.DAMAGE.getMask()])
+                        nsWeapon.GENERATION.getMask()])
     packed = nsGlobal.PHASE.set(packed, getNextPhase(currentPhase));
+    packed = nsWeapon.DAMAGE.set(packed, 2);
     packed = nsWeapon.DIRECTION.set(packed, offsetsToWeaponDirection(dX, dY));
     return packed;
   }
@@ -256,16 +256,22 @@ let bm;
     let creepColor = newCreepColor(MAX_CREEP_HP, 0);
     c.fillRect(creepColor, 3, Math.round(spacing / 2), 1, 1)
 
-    let weaponColor = newWeaponColor(-1, 0, 0);
-    c.fillRect(weaponColor, Math.round(gameWidth / 2),
-               Math.round(spacing / 2), 1, 1)
-    c.fillRect(weaponColor, Math.round(gameWidth - 1),
-               Math.round(spacing / 2), 1, 1)
-    c.fillRect(weaponColor, Math.round(3 * gameWidth / 4),
-               Math.round(spacing / 2), 1, 1)
+//    let weaponColor = newWeaponColor(-1, 0, 0);
+//    c.fillRect(weaponColor, Math.round(gameWidth / 2),
+//               Math.round(spacing / 2), 1, 1)
+//    c.fillRect(weaponColor, Math.round(gameWidth - 1),
+//               Math.round(spacing / 2), 1, 1)
+//    c.fillRect(weaponColor, Math.round(3 * gameWidth / 4),
+//               Math.round(spacing / 2), 1, 1)
     let towerColor = newTowerColor(0);
     c.fillRect(towerColor, Math.round(3 * gameWidth / 4),
-               5 * Math.round(spacing / 2), 1, 1)
+               Math.round(5 * spacing / 2), 1, 1)
+    c.fillRect(towerColor, Math.round(1 * gameWidth / 3),
+               Math.round(11 * spacing / 2), 1, 1)
+    c.fillRect(towerColor, Math.round(3 * gameWidth / 4),
+               Math.round(17 * spacing / 2), 1, 1)
+    c.fillRect(towerColor, Math.round(1 * gameWidth / 4),
+               Math.round(17 * spacing / 2), 1, 1)
 
 /* TODO: initScoreboard first.
     drawScoreboard(c, originX + 1, originY + 1,
@@ -332,6 +338,7 @@ let bm;
       } else {
         next = setCreepGeneration(next, counter);
       }
+      let damage = 0;
       for (let index = 0; index < 9; ++index) {
         let value = data[index];
         if (isWeapon(value)) {
@@ -340,13 +347,14 @@ let bm;
           // approached whom first.
           if (weaponGen === MAX_WEAPON_GENERATION ||
               weaponGen === MAX_WEAPON_GENERATION - 1) {
-            hp = Math.max(0, hp - getWeaponDamage(value));
-            // Have to stick around long enough to tell the rest of me, even if
-            // I'm at zero hp.
-            next = setCreepHp(next, hp);
+            damage = getWeaponDamage(value);
           }
         }
       }
+      hp = Math.max(0, hp - damage);
+      // Have to stick around long enough to tell the rest of me, even if
+      // I'm at zero hp.
+      next = setCreepHp(next, hp);
     }
     return incrementPhase(next);
   }
