@@ -8,6 +8,7 @@ let bm;
   let nsGlobal;
   let isWall, isBackground, isCreep, isTower, isWeapon;
   let MAX_CREEP_GENERATION;
+  let MAX_WEAPON_GENERATION;
   let isScoreboard;
   let copySets = {};
   const SCOREBOARD_HEIGHT = 0;
@@ -40,9 +41,9 @@ let bm;
     }
     nsGlobal.alloc('PHASE', PHASE_BITS); // not needed by background, though
 
-    nsGlobal.declare('IS_SCENERY', 1, 24);
-    nsGlobal.setSubspaceMask('IS_SCENERY');
-    nsScenery = nsGlobal.declareSubspace('SCENERY', 'IS_SCENERY');
+    nsGlobal.declare('SCENERY_FLAG', 1, 24);
+    nsGlobal.setSubspaceMask('SCENERY_FLAG');
+    nsScenery = nsGlobal.declareSubspace('SCENERY', 'SCENERY_FLAG');
     nsNonScenery = nsGlobal.declareSubspace('NONSCENERY', 0);
 
     nsNonScenery.declare('ID_0', 1, 7);
@@ -58,23 +59,32 @@ let bm;
     nsTower = nsNonScenery.declareSubspace('TOWER', 'TOWER_FLAG');
     const nsUnused = nsNonScenery.declareSubspace('UNUSED', 0);
 
-    // TODO: Standardize on IS_FOO or FOO_FLAG?
-    isCreep = getHasValueFunction(bm.or([nsGlobal.IS_SCENERY.getMask(),
+    // TODO: BitManager should be able to generate this function given just the
+    // lowest-level bits, since it knows the namespace tree.
+    isCreep = getHasValueFunction(bm.or([nsGlobal.SCENERY_FLAG.getMask(),
                                          nsNonScenery.CREEP_FLAG.getMask()]),
                                   nsNonScenery.CREEP_FLAG.getMask());
-    nsScenery.declare('IS_WALL', 1, 15);
-    nsScenery.setSubspaceMask('IS_WALL');
-    nsWall = nsScenery.declareSubspace('WALL', 'IS_WALL');
+    isWeapon = getHasValueFunction(bm.or([nsGlobal.SCENERY_FLAG.getMask(),
+                                         nsNonScenery.WEAPON_FLAG.getMask()]),
+                                  nsNonScenery.WEAPON_FLAG.getMask());
+    nsScenery.declare('WALL_FLAG', 1, 15);
+    nsScenery.setSubspaceMask('WALL_FLAG');
+    nsWall = nsScenery.declareSubspace('WALL', 'WALL_FLAG');
     nsScoreboard = nsScenery.declareSubspace('SCOREBOARD', 0);
 
-    isWall = getHasValueFunction(bm.or([nsGlobal.IS_SCENERY.getMask(),
-                                       nsScenery.IS_WALL.getMask()]),
-                                 bm.or([nsGlobal.IS_SCENERY.getMask(),
-                                       nsScenery.IS_WALL.getMask()]));
+    isWall = getHasValueFunction(bm.or([nsGlobal.SCENERY_FLAG.getMask(),
+                                       nsScenery.WALL_FLAG.getMask()]),
+                                 bm.or([nsGlobal.SCENERY_FLAG.getMask(),
+                                       nsScenery.WALL_FLAG.getMask()]));
 
     let CREEP_GENERATION_BITS = 2;
     nsCreep.alloc('GENERATION', CREEP_GENERATION_BITS)
     MAX_CREEP_GENERATION = (1 << CREEP_GENERATION_BITS) - 1;
+
+    let WEAPON_GENERATION_BITS = 3;
+    nsWeapon.alloc('GENERATION', WEAPON_GENERATION_BITS)
+    MAX_WEAPON_GENERATION = (1 << WEAPON_GENERATION_BITS) - 1;
+    nsWeapon.alloc('DIRECTION', 2); // up, right, down, left
 
     // TODO
     /*
@@ -85,6 +95,8 @@ let bm;
     nsGlobal.dumpStatus();
   }
 
+  // This is the diretion from the source toward you, with positive DX to the
+  // right, and positive DY down, matching the canvas.
   function sourceDirectionFromIndex(i) {
     let dirBits;
     switch (i) {
@@ -110,6 +122,43 @@ let bm;
     }
   }
 
+  function weaponDirectionToOffsets(dir) {
+    switch (dir) {
+      case 0:
+        return { dX:  0, dY:  1 };
+      case 1:
+        return { dX:  1, dY:  0 };
+      case 2:
+        return { dX:  0, dY: -1 };
+      case 3:
+        return { dX: -1, dY:  0 };
+    }
+    assert(false, "Invalid weapon direction.");
+  }
+
+  function offsetsToWeaponDirection(dX, dY) {
+    assert(!dX || !dY);
+    assert(!dX || Math.abs(dX) === 1);
+    assert(!dY || Math.abs(dY) === 1);
+    if (dY > 0) {
+      return 0;
+    }
+    if (dX > 0) {
+      return 1;
+    }
+    if (dY < 0) {
+      return 2;
+    }
+    if (dX < 0) {
+      return 3;
+    }
+    assert(false, "Offsets can't both be zero.");
+  }
+
+  function getWeaponDirectionOffsets(packed) {
+    return weaponDirectionToOffsets(nsWeapon.DIRECTION.get(packed));
+  }
+
   function isActivePhase(phase, packed) {
     return phase === nsGlobal.PHASE.get(packed);
   }
@@ -131,6 +180,15 @@ let bm;
     return nsGlobal.PHASE.set(packed, phase);
   }
 
+  function newWeaponColor(dX, dY) {
+    let packed = bm.or([nsGlobal.FULL_ALPHA.getMask(),
+                        nsNonScenery.WEAPON_FLAG.getMask(),
+                        nsWeapon.GENERATION.getMask()])
+    packed = nsGlobal.PHASE.set(packed, getNextPhase(WEAPON_PHASE));
+    packed = nsWeapon.DIRECTION.set(packed, offsetsToWeaponDirection(dX, dY));
+    return packed;
+  }
+
   function initTower(c, originX, originY, width, height, obviousColors) {
     const gameOriginX = originX;
     const gameOriginY = originY + SCOREBOARD_HEIGHT;
@@ -144,8 +202,8 @@ let bm;
     c.fillRect(background, 0, 0, canvas.width, canvas.height);
 
     // walls
-    let color = bm.or([nsGlobal.IS_SCENERY.getMask(),
-                       nsScenery.IS_WALL.getMask(),
+    let color = bm.or([nsGlobal.SCENERY_FLAG.getMask(),
+                       nsScenery.WALL_FLAG.getMask(),
                        nsGlobal.FULL_ALPHA.getMask()]);
     c.strokeRect(color, originX, originY,
                  gameWidth, gameHeight + SCOREBOARD_HEIGHT);
@@ -165,6 +223,9 @@ let bm;
                spacing, spacing);
 
     c.fillRect(newCreepColor(), 3, Math.round(spacing / 2), 1, 1)
+
+    c.fillRect(newWeaponColor(-1, 0), Math.round(gameWidth / 2),
+               Math.round(spacing / 2), 1, 1)
 /* TODO: initScoreboard first.
     drawScoreboard(c, originX + 1, originY + 1,
                    SCOREBOARD_WIDTH - 2, SCOREBOARD_HEIGHT - 1);
@@ -187,6 +248,13 @@ let bm;
     return nsCreep.GENERATION.set(packed, value);
   }
 
+  function getWeaponGeneration(packed) {
+    return nsWeapon.GENERATION.get(packed);
+  }
+  function setWeaponGeneration(packed, value) {
+    return nsWeapon.GENERATION.set(packed, value);
+  }
+
   function handleCreep(data, x, y) {
     const current = data[4];
     let next;
@@ -203,13 +271,38 @@ let bm;
     return incrementPhase(next);
   }
 
+  function handleWeapon(data, x, y) {
+    const current = data[4];
+    let next;
+    if (isActivePhase(WEAPON_PHASE, current)) {
+      let counter = getWeaponGeneration(current);
+      if (--counter <= 0) {
+        next = nsGlobal.BASIC_BACKGROUND.getMask();
+      } else {
+        next = setWeaponGeneration(current, counter);
+      }
+    } else {
+      next = current
+    }
+    return incrementPhase(next);
+  }
+
   function handleBackground(data, x, y) {
-    for (let index in data) {
+    for (let index = 0; index < 9; ++index) {
       if (index % 2) {
         let value = data[index];
         if (isCreep(value) && isActivePhase(CREEP_PHASE, value) &&
             getCreepGeneration(value) == MAX_CREEP_GENERATION) {
           return newCreepColor();
+        }
+        let dir = sourceDirectionFromIndex(index);
+        if (isWeapon(value) && isActivePhase(WEAPON_PHASE, value) &&
+            getWeaponGeneration(value) == MAX_WEAPON_GENERATION) {
+          let weaponDir = getWeaponDirectionOffsets(value);
+          if ((dir.dX == weaponDir.dX) && (dir.dY == weaponDir.dY)) {
+            console.log('dir', dir, 'weaponDir', weaponDir, 'index', index)
+            return newWeaponColor(dir.dX, dir.dY);
+          }
         }
       }
     }
@@ -230,6 +323,10 @@ let bm;
 
     if (isCreep(current)) {
       return handleCreep(data, x, y);
+    }
+
+    if (isWeapon(current)) {
+      return handleWeapon(data, x, y);
     }
 
     return handleBackground(data, x, y);
