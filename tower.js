@@ -8,7 +8,9 @@ let bm;
   let nsGlobal;
   let isWall, isBackground, isCreep, isTower, isWeapon;
   let MAX_CREEP_GENERATION;
+  let MAX_CREEP_HP;
   let MAX_WEAPON_GENERATION;
+  let MAX_WEAPON_DAMAGE;
   let isScoreboard;
   let copySets = {};
   const SCOREBOARD_HEIGHT = 0;
@@ -81,10 +83,19 @@ let bm;
     nsCreep.alloc('GENERATION', CREEP_GENERATION_BITS)
     MAX_CREEP_GENERATION = (1 << CREEP_GENERATION_BITS) - 1;
 
+    let CREEP_HP_BITS = 3;
+    nsCreep.alloc('HP', CREEP_HP_BITS)
+    MAX_CREEP_HP = (1 << CREEP_HP_BITS) - 1;
+
     let WEAPON_GENERATION_BITS = 3;
     nsWeapon.alloc('GENERATION', WEAPON_GENERATION_BITS)
     MAX_WEAPON_GENERATION = (1 << WEAPON_GENERATION_BITS) - 1;
+    // Currently we limit weapons to 4 directions; we could add more.
     nsWeapon.alloc('DIRECTION', 2); // up, right, down, left
+    let WEAPON_DAMAGE_BITS = 2;
+    nsWeapon.alloc('DAMAGE', WEAPON_DAMAGE_BITS);
+    MAX_WEAPON_DAMAGE = (1 << WEAPON_DAMAGE_BITS) - 1;
+
 
     // TODO
     /*
@@ -172,18 +183,21 @@ let bm;
 
   // Creeps are created during CREEP_PHASE, so they start holding the phase
   // after that.
-  function newCreepColor() {
+  function newCreepColor(hp) {
     let packed = bm.or([nsGlobal.FULL_ALPHA.getMask(),
                         nsNonScenery.CREEP_FLAG.getMask(),
                         nsCreep.GENERATION.getMask()])
     let phase = getNextPhase(CREEP_PHASE);
-    return nsGlobal.PHASE.set(packed, phase);
+    packed = nsGlobal.PHASE.set(packed, phase);
+    packed = nsCreep.HP.set(packed, hp);
+    return packed;
   }
 
   function newWeaponColor(dX, dY) {
     let packed = bm.or([nsGlobal.FULL_ALPHA.getMask(),
                         nsNonScenery.WEAPON_FLAG.getMask(),
-                        nsWeapon.GENERATION.getMask()])
+                        nsWeapon.GENERATION.getMask(),
+                        nsWeapon.DAMAGE.getMask()])
     packed = nsGlobal.PHASE.set(packed, getNextPhase(WEAPON_PHASE));
     packed = nsWeapon.DIRECTION.set(packed, offsetsToWeaponDirection(dX, dY));
     return packed;
@@ -222,9 +236,15 @@ let bm;
                Math.round(canvas.width / 4), Math.round(4.5 * spacing),
                spacing, spacing);
 
-    c.fillRect(newCreepColor(), 3, Math.round(spacing / 2), 1, 1)
+    let creepColor = nsGlobal.PHASE.set(newCreepColor(MAX_CREEP_HP), 0);
+    c.fillRect(creepColor, 3, Math.round(spacing / 2), 1, 1)
 
-    c.fillRect(newWeaponColor(-1, 0), Math.round(gameWidth / 2),
+    let weapongColor = nsGlobal.PHASE.set(newWeaponColor(-1, 0), 0);
+    c.fillRect(weapongColor, Math.round(gameWidth / 2),
+               Math.round(spacing / 2), 1, 1)
+    c.fillRect(weapongColor, Math.round(gameWidth - 1),
+               Math.round(spacing / 2), 1, 1)
+    c.fillRect(weapongColor, Math.round(3 * gameWidth / 4),
                Math.round(spacing / 2), 1, 1)
 /* TODO: initScoreboard first.
     drawScoreboard(c, originX + 1, originY + 1,
@@ -244,6 +264,12 @@ let bm;
   function getCreepGeneration(packed) {
     return nsCreep.GENERATION.get(packed);
   }
+  function getCreepHp(packed) {
+    return nsCreep.HP.get(packed);
+  }
+  function setCreepHp(packed, hp) {
+    return nsCreep.HP.set(packed, hp);
+  }
   function setCreepGeneration(packed, value) {
     return nsCreep.GENERATION.set(packed, value);
   }
@@ -254,19 +280,52 @@ let bm;
   function setWeaponGeneration(packed, value) {
     return nsWeapon.GENERATION.set(packed, value);
   }
+  function getWeaponDamage(packed) {
+    return nsWeapon.DAMAGE.get(packed);
+  }
 
   function handleCreep(data, x, y) {
     const current = data[4];
-    let next;
+    // We only die on the active phase, to ensure propagation of the damage.
     if (isActivePhase(CREEP_PHASE, current)) {
-      let counter = getCreepGeneration(current);
-      if (--counter <= 0) {
-        next = nsGlobal.BASIC_BACKGROUND.getMask();
-      } else {
-        next = setCreepGeneration(current, counter);
+      if (getCreepHp(current) === 0) {
+        return nsGlobal.BASIC_BACKGROUND.getMask();
       }
-    } else {
-      next = current
+    }
+    // Propagate damage, even out of phase.
+    let hp = getCreepHp(current);
+    for (let index = 0; index < 9; ++index) {
+      let value = data[index];
+      if (isCreep(value)) {
+        // This is questionable long-term; should all creeps share damage/hp on
+        // contact?
+        hp = Math.min(hp, getCreepHp(value));
+      }
+    }
+    let next = setCreepHp(current, hp);
+    if (isActivePhase(CREEP_PHASE, next)) {
+      let counter = getCreepGeneration(next);
+      if (--counter <= 0) {
+        // We don't give the background a phase currently.
+        return nsGlobal.BASIC_BACKGROUND.getMask();
+      } else {
+        next = setCreepGeneration(next, counter);
+      }
+      for (let index = 0; index < 9; ++index) {
+        let value = data[index];
+        if (isWeapon(value)) {
+          let weaponGen = getWeaponGeneration(value)
+          // Must allow for top 2 generations due to not knowing who
+          // approached whom first.
+          if (weaponGen === MAX_WEAPON_GENERATION ||
+              weaponGen === MAX_WEAPON_GENERATION - 1) {
+            hp = Math.max(0, hp - getWeaponDamage(value));
+            // Have to stick around long enough to tell the rest of me, even if
+            // I'm at zero hp.
+            next = setCreepHp(next, hp);
+          }
+        }
+      }
     }
     return incrementPhase(next);
   }
@@ -279,7 +338,7 @@ let bm;
         let value = data[index];
         if (isCreep(value) && isActivePhase(CREEP_PHASE, value) &&
             getCreepGeneration(value) == MAX_CREEP_GENERATION) {
-          return newCreepColor();
+          return newCreepColor(getCreepHp(value));
         }
       }
     }
@@ -299,20 +358,21 @@ let bm;
 
   function handleBackground(data, x, y) {
     for (let index = 0; index < 9; ++index) {
-      if (index % 2) {
-        let value = data[index];
+      let value = data[index];
+      if (index % 2) { // tweak creep propagation
         if (isCreep(value) && isActivePhase(CREEP_PHASE, value) &&
-            getCreepGeneration(value) == MAX_CREEP_GENERATION) {
-          return newCreepColor();
+            getCreepGeneration(value) == MAX_CREEP_GENERATION &&
+            getCreepHp(value)) {
+          return newCreepColor(getCreepHp(value));
         }
-        let dir = sourceDirectionFromIndex(index);
-        if (isWeapon(value) && isActivePhase(WEAPON_PHASE, value) &&
-            getWeaponGeneration(value) == MAX_WEAPON_GENERATION) {
-          let weaponDir = getWeaponDirectionOffsets(value);
-          if ((dir.dX == weaponDir.dX) && (dir.dY == weaponDir.dY)) {
-            console.log('dir', dir, 'weaponDir', weaponDir, 'index', index)
-            return newWeaponColor(dir.dX, dir.dY);
-          }
+      }
+      let dir = sourceDirectionFromIndex(index);
+      if (isWeapon(value) && isActivePhase(WEAPON_PHASE, value) &&
+          getWeaponGeneration(value) == MAX_WEAPON_GENERATION) {
+        let weaponDir = getWeaponDirectionOffsets(value);
+        if ((dir.dX == weaponDir.dX) && (dir.dY == weaponDir.dY)) {
+          console.log('dir', dir, 'weaponDir', weaponDir, 'index', index)
+          return newWeaponColor(dir.dX, dir.dY);
         }
       }
     }
