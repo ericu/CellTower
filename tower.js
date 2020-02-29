@@ -273,6 +273,16 @@ let bm;
 
   function handleWeapon(data, x, y) {
     const current = data[4];
+    // Let creeps overwrite weapons.
+    for (let index = 0; index < 9; ++index) {
+      if (index % 2) {
+        let value = data[index];
+        if (isCreep(value) && isActivePhase(CREEP_PHASE, value) &&
+            getCreepGeneration(value) == MAX_CREEP_GENERATION) {
+          return newCreepColor();
+        }
+      }
+    }
     let next;
     if (isActivePhase(WEAPON_PHASE, current)) {
       let counter = getWeaponGeneration(current);
