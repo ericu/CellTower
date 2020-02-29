@@ -12,6 +12,12 @@ let bm;
   let copySets = {};
   const SCOREBOARD_HEIGHT = 0;
   const SCOREBOARD_WIDTH = 0;
+  const PHASE_BITS = 2;
+  const PHASE_COUNT = 1 << PHASE_BITS;
+  const CREEP_PHASE = 0;
+  const TOWER_PHASE = 1;
+  const WEAPON_PHASE = 2;
+  const WALL_PHASE = 3; // needed?
 
   function initBitManager(obviousColors) {
     nsGlobal = new Namespace();
@@ -32,6 +38,7 @@ let bm;
       nsGlobal.declare('FULL_ALPHA', 2, 30);
       nsGlobal.alloc('BASIC_BACKGROUND', 0);
     }
+    nsGlobal.alloc('PHASE', PHASE_BITS); // not needed by background, though
 
     nsGlobal.declare('IS_SCENERY', 1, 24);
     nsGlobal.setSubspaceMask('IS_SCENERY');
@@ -103,10 +110,25 @@ let bm;
     }
   }
 
+  function isActivePhase(phase, packed) {
+    return phase === nsGlobal.PHASE.get(packed);
+  }
+  function getNextPhase(phase) {
+    return (phase + 1) % PHASE_COUNT;
+  }
+  function incrementPhase(packed) {
+    let phase = getNextPhase(nsGlobal.PHASE.get(packed));
+    return nsGlobal.PHASE.set(packed, phase);
+  }
+
+  // Creeps are created during CREEP_PHASE, so they start holding the phase
+  // after that.
   function newCreepColor() {
-    return bm.or([nsGlobal.FULL_ALPHA.getMask(),
-                  nsNonScenery.CREEP_FLAG.getMask(),
-                  nsCreep.GENERATION.getMask()])
+    let packed = bm.or([nsGlobal.FULL_ALPHA.getMask(),
+                        nsNonScenery.CREEP_FLAG.getMask(),
+                        nsCreep.GENERATION.getMask()])
+    let phase = getNextPhase(CREEP_PHASE);
+    return nsGlobal.PHASE.set(packed, phase);
   }
 
   function initTower(c, originX, originY, width, height, obviousColors) {
@@ -167,19 +189,25 @@ let bm;
 
   function handleCreep(data, x, y) {
     const current = data[4];
-    let counter = getCreepGeneration(current);
-    if (--counter <= 0) {
-      return nsGlobal.BASIC_BACKGROUND.getMask();
+    let next;
+    if (isActivePhase(CREEP_PHASE, current)) {
+      let counter = getCreepGeneration(current);
+      if (--counter <= 0) {
+        next = nsGlobal.BASIC_BACKGROUND.getMask();
+      } else {
+        next = setCreepGeneration(current, counter);
+      }
     } else {
-      return setCreepGeneration(current, counter);
+      next = current
     }
+    return incrementPhase(next);
   }
 
   function handleBackground(data, x, y) {
     for (let index in data) {
       if (index % 2) {
         let value = data[index];
-        if (isCreep(value) &&
+        if (isCreep(value) && isActivePhase(CREEP_PHASE, value) &&
             getCreepGeneration(value) == MAX_CREEP_GENERATION) {
           return newCreepColor();
         }
