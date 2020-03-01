@@ -251,10 +251,11 @@ let bm;
     return packed;
   }
 
-  function newSpawnTowerColor(currentPhase) {
+  function newSpawnTowerColor(currentPhase, counter) {
     let packed = bm.or([nsGlobal.FULL_ALPHA.getMask(),
                         nsNonScenery.TOWER_FLAG.getMask()])
     packed = nsGlobal.PHASE.set(packed, getNextPhase(currentPhase));
+    packed = nsSpawnTower.COUNTER.set(packed, counter || 0);
     return packed;
   }
 
@@ -315,7 +316,7 @@ let bm;
     c.fillRect(towerColor, Math.round(gameWidth - spacing / 2),
                Math.round(17 * spacing / 2), 1, 1)
 
-    let spawnColor = newSpawnTowerColor(0);
+    let spawnColor = newSpawnTowerColor(0, 60);
     c.fillRect(spawnColor, 2, Math.round(spacing / 2), 1, 1);
 
 /* TODO: initScoreboard first.
