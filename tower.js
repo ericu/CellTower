@@ -18,12 +18,14 @@ let bm;
   let copySets = {};
   const SCOREBOARD_HEIGHT = 0;
   const SCOREBOARD_WIDTH = 0;
-  const PHASE_BITS = 2;
-  const PHASE_COUNT = 1 << PHASE_BITS;
-  const CREEP_PHASE = 0;
-  const TOWER_PHASE = 1;
-  const WEAPON_PHASE = 2;
-  const SPAWN_PHASE = 3;
+  // Phases are one-hot encoding of activity.
+  const PHASE_BITS = 6;
+  const WEAPON_PHASE = 0x15;
+  const CREEP_PHASE = 0x02;
+  const TOWER_PHASE = 0x08;
+  const SPAWN_PHASE = 0x20;
+  const MIN_PHASE_BIT = 0x01;
+  const MAX_PHASE_BIT = 0x20;
 
   function initBitManager(obviousColors) {
     nsGlobal = new Namespace();
@@ -118,9 +120,9 @@ let bm;
 
     let WEAPON_TOWER_COUNTER_BITS = 6;
     nsWeaponTower.alloc('COUNTER', WEAPON_TOWER_COUNTER_BITS);
-    MAX_WEAPON_TOWER_COUNTER = 40;
+    MAX_WEAPON_TOWER_COUNTER = 45;
 
-    let SPAWN_TOWER_COUNTER_BITS = 5;
+    let SPAWN_TOWER_COUNTER_BITS = 6;
     nsSpawnTower.alloc('COUNTER', SPAWN_TOWER_COUNTER_BITS);
     MAX_SPAWN_TOWER_COUNTER = (1 << SPAWN_TOWER_COUNTER_BITS) - 1;
 
@@ -205,11 +207,15 @@ let bm;
     return nsSpawnTower.COUNTER.get(packed);
   }
 
-  function isActivePhase(phase, packed) {
-    return phase === nsGlobal.PHASE.get(packed);
+  function isActivePhase(phaseBits, packed) {
+    return _and(phaseBits, nsGlobal.PHASE.get(packed));
   }
   function getNextPhase(phase) {
-    return (phase + 1) % PHASE_COUNT;
+    let next = phase << 1;
+    if (next > MAX_PHASE_BIT || !next) {
+      next = MIN_PHASE_BIT;
+    }
+    return next
   }
   function incrementPhase(packed) {
     let phase = getNextPhase(nsGlobal.PHASE.get(packed));
@@ -236,11 +242,12 @@ let bm;
     return packed;
   }
 
-  function newWeaponTowerColor(currentPhase) {
+  function newWeaponTowerColor(currentPhase, counter) {
     let packed = bm.or([nsGlobal.FULL_ALPHA.getMask(),
                         nsNonScenery.TOWER_FLAG.getMask(),
                         nsTower.WEAPON_TOWER_FLAG.getMask()])
     packed = nsGlobal.PHASE.set(packed, getNextPhase(currentPhase));
+    packed = nsWeaponTower.COUNTER.set(packed, counter || 0);
     return packed;
   }
 
@@ -294,11 +301,15 @@ let bm;
 //               Math.round(spacing / 2), 1, 1)
 //    c.fillRect(weaponColor, Math.round(3 * gameWidth / 4),
 //               Math.round(spacing / 2), 1, 1)
-    let towerColor = newWeaponTowerColor(0);
+    let towerColor = newWeaponTowerColor(0, 30);
     c.fillRect(towerColor, Math.round(3 * gameWidth / 4),
                Math.round(5 * spacing / 2), 1, 1)
     c.fillRect(towerColor, Math.round(gameWidth / 4 + 0.5 * spacing),
                Math.round(11 * spacing / 2), 1, 1)
+    towerColor = newWeaponTowerColor(0, 20);
+    c.fillRect(towerColor, Math.round(gameWidth - spacing / 2),
+               Math.round(13 * spacing / 2), 1, 1)
+    towerColor = newWeaponTowerColor(0, 10);
     c.fillRect(towerColor, Math.round(spacing * 0.5),
                Math.round(17 * spacing / 2), 1, 1)
     c.fillRect(towerColor, Math.round(gameWidth - spacing / 2),
