@@ -243,20 +243,26 @@
   window.showObviousToggled = showObviousToggled;
 
   let frameReady = false;
-  let frameInProgress = false;
   function asyncStep() {
-    runConv3x3Step(curFunc, inputView, outputView);
-    inputView.set(outputView);
-    frameReady = true;
-    ++fpsFrames;
-    frameInProgress = false;
-    if (running && goFast) {
-      frameInProgress = true;
-      window.setTimeout(asyncStep, 0);
+    let doStep = () => {
+      runConv3x3Step(curFunc, inputView, outputView);
+      inputView.set(outputView);
+      frameReady = true;
+      ++fpsFrames;
     }
+    doStep();
+    let deadline = lastFrameStart + 0.9 * 1000 / 60; // 90% of frame in ms
+    if (running) {
+      while (goFast && (performance.now() < deadline)) {
+        doStep();
+      }
+    }
+
   }
 
+  let lastFrameStart = 0;
   function asyncAnimationFrame(timestamp) {
+    lastFrameStart = timestamp;
     if (running) {
       if (frameReady) {
         frameReady = false;
@@ -264,9 +270,7 @@
                              originX, originY, activeWidth, activeHeight);
         updateFPS(timestamp);
       }
-      if (!frameInProgress) {
-        window.setTimeout(asyncStep, 0);
-      }
+      window.setTimeout(asyncStep, 0);
       requestAnimationFrame(asyncAnimationFrame);
     } else {
       resetFPS();
