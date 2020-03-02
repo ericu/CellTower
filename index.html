@@ -12,50 +12,8 @@
   <div id="container">
     <div id="controls">
       <div class=basic-info>
-        <div class=player-select>
-          <label for="select_left_player_human">
-            <input type="radio" id="select_left_player_human" name="left_player"
-                   value="human" onclick="playerToggled('left')">
-            </input>
-            Left player human
-          </label>
-          <label for="select_left_player">
-            <input type="radio" id="select_left_player_ai" name="left_player"
-                   value="ai" onclick="playerToggled('left')" checked>
-            </input>
-            Left player AI
-          </label>
-        </div>
-        <div class=player-select>
-          <label for="select_right_player_human">
-            <input type="radio" id="select_right_player_human"
-                   name="right_player"
-                   value="human" onclick="playerToggled('right')">
-            </input>
-            Right player human
-          </label>
-          <label for="select_right_player">
-            <input type="radio" id="select_right_player_ai" name="right_player"
-                   value="ai" onclick="playerToggled('right')" checked>
-            </input>
-            Right player AI
-          </label>
-        </div>
-        <div id="keyboard-info">
-          <div id="keyboard-controls-label">
-            Keyboard controls:
-          </div>
-          <div id="keyboard-controls-list">
-            <div>
-              Left player: w/s
-            </div>
-            <div>
-              Right player: arrows
-            </div>
-            <div>
-              Pause/continue: space
-            </div>
-          </div>
+        <div>
+          Pause/continue: space
         </div>
         <div id="checkboxes">
           <label for="toggle_obvious">
@@ -63,6 +21,12 @@
                    onclick="showObviousToggled()">
             </input>
             Use more revealing colors
+          </label>
+          <label for="toggle_fast">
+            <input type="checkbox" id="toggle_fast"
+                   onclick="fastToggled()">
+            </input>
+            Run faster than one calculation pass per frame.
           </label>
           <label for="toggle_debug_controls">
             <input type="checkbox" id="toggle_debug_controls" checked

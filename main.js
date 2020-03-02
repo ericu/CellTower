@@ -32,7 +32,6 @@
     showDebugToggled();
     showDebugControlsToggled();
     getColorInfo();
-    getPlayerInfo();
     canvas.addEventListener('click', onCanvasClicked);
     canvas2.addEventListener('click', onCanvasClicked);
     window.addEventListener('resize', resizeCanvasCSS);
@@ -227,6 +226,13 @@
   }
   window.showDebugControlsToggled = showDebugControlsToggled;
 
+  let goFast = false;
+  function fastToggled() {
+    goFast = document.getElementById('toggle_fast').checked;
+    console.log('goFast is ', goFast);
+  }
+  window.fastToggled = fastToggled;
+
   let OBVIOUS_COLORS;
   function getColorInfo() {
     OBVIOUS_COLORS = document.getElementById('toggle_obvious').checked;
@@ -237,24 +243,23 @@
   }
   window.showObviousToggled = showObviousToggled;
 
-  window.leftPlayerHuman = false;
-  window.rightPlayerHuman = false;
-  function getPlayerInfo() {
-    leftPlayerHuman =
-      document.getElementById('select_left_player_human').checked;
-    rightPlayerHuman =
-      document.getElementById('select_right_player_human').checked;
-  }
-  function playerToggled() {
-    getPlayerInfo();
-    initAnimation();
-  }
-  window.playerToggled = playerToggled;
-
   let frameReady = false;
   let frameInProgress = false;
   function asyncStep() {
-    runConv3x3Step(curFunc, inputView, outputView);
+    // TODO: Figure out how fast we can go at 60 FPS and just do that.
+    // The async stepping's probably not too hard to adapt to that.
+    if (goFast) {
+      runConv3x3Step(curFunc, inputView, outputView);
+      inputView.set(outputView);
+      runConv3x3Step(curFunc, inputView, outputView);
+      inputView.set(outputView);
+      runConv3x3Step(curFunc, inputView, outputView);
+      inputView.set(outputView);
+      runConv3x3Step(curFunc, inputView, outputView);
+    } else {
+      runConv3x3Step(curFunc, inputView, outputView);
+    }
+    inputView.set(outputView);
     frameReady = true;
     frameInProgress = false;
   }
@@ -265,7 +270,6 @@
         frameReady = false;
         context.putImageData(outputBuffer, 0, 0,
                              originX, originY, activeWidth, activeHeight);
-        inputView.set(outputView);
         window.setTimeout(asyncStep, 0);
         updateFPS(timestamp);
       } else if (!frameInProgress) {
