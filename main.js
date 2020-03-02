@@ -229,7 +229,6 @@
   let goFast = false;
   function fastToggled() {
     goFast = document.getElementById('toggle_fast').checked;
-    console.log('goFast is ', goFast);
   }
   window.fastToggled = fastToggled;
 
@@ -246,32 +245,15 @@
   let frameReady = false;
   let frameInProgress = false;
   function asyncStep() {
-    // TODO: Figure out how fast we can go at 60 FPS and just do that.
-    // The async stepping's probably not too hard to adapt to that.
-    if (goFast) {
-      runConv3x3Step(curFunc, inputView, outputView);
-      ++fpsFrames;
-      inputView.set(outputView);
-      runConv3x3Step(curFunc, inputView, outputView);
-      ++fpsFrames;
-      inputView.set(outputView);
-      runConv3x3Step(curFunc, inputView, outputView);
-      ++fpsFrames;
-      inputView.set(outputView);
-      runConv3x3Step(curFunc, inputView, outputView);
-      ++fpsFrames;
-      inputView.set(outputView);
-      runConv3x3Step(curFunc, inputView, outputView);
-      ++fpsFrames;
-      inputView.set(outputView);
-      runConv3x3Step(curFunc, inputView, outputView);
-    } else {
-      runConv3x3Step(curFunc, inputView, outputView);
-    }
-    ++fpsFrames;
+    runConv3x3Step(curFunc, inputView, outputView);
     inputView.set(outputView);
     frameReady = true;
+    ++fpsFrames;
     frameInProgress = false;
+    if (running && goFast) {
+      frameInProgress = true;
+      window.setTimeout(asyncStep, 0);
+    }
   }
 
   function asyncAnimationFrame(timestamp) {
@@ -280,9 +262,9 @@
         frameReady = false;
         context.putImageData(outputBuffer, 0, 0,
                              originX, originY, activeWidth, activeHeight);
-        window.setTimeout(asyncStep, 0);
         updateFPS(timestamp);
-      } else if (!frameInProgress) {
+      }
+      if (!frameInProgress) {
         window.setTimeout(asyncStep, 0);
       }
       requestAnimationFrame(asyncAnimationFrame);
@@ -312,15 +294,6 @@
   }
 
   let running = false;
-  function animationFrame(timestamp) {
-    if (running) {
-      step();
-      updateFPS(timestamp);
-      requestAnimationFrame(animationFrame);
-    } else {
-      resetFPS();
-    }
-  }
 
   /* On frame callback:
      If you have a frame ready to show, copy it in, tell updateFPS about it, and
