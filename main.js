@@ -250,15 +250,25 @@
     // The async stepping's probably not too hard to adapt to that.
     if (goFast) {
       runConv3x3Step(curFunc, inputView, outputView);
+      ++fpsFrames;
       inputView.set(outputView);
       runConv3x3Step(curFunc, inputView, outputView);
+      ++fpsFrames;
       inputView.set(outputView);
       runConv3x3Step(curFunc, inputView, outputView);
+      ++fpsFrames;
+      inputView.set(outputView);
+      runConv3x3Step(curFunc, inputView, outputView);
+      ++fpsFrames;
+      inputView.set(outputView);
+      runConv3x3Step(curFunc, inputView, outputView);
+      ++fpsFrames;
       inputView.set(outputView);
       runConv3x3Step(curFunc, inputView, outputView);
     } else {
       runConv3x3Step(curFunc, inputView, outputView);
     }
+    ++fpsFrames;
     inputView.set(outputView);
     frameReady = true;
     frameInProgress = false;
@@ -341,7 +351,6 @@
     if (fpsStartTime < 0) {
       fpsStartTime = timestamp;
     } else {
-      ++fpsFrames
       var timeDiff = timestamp - fpsStartTime
       // If it's been over a second and we've done something, update.
       if (timeDiff >= 1000 && fpsFrames > 0) {
