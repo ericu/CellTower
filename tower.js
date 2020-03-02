@@ -412,7 +412,8 @@ let bm;
       if (index % 2) {
         let value = data[index];
         if (isCreep(value) && isActivePhase(CREEP_PHASE, value) &&
-            getCreepGeneration(value) == MAX_CREEP_GENERATION) {
+            getCreepGeneration(value) == MAX_CREEP_GENERATION
+            && getCreepHp(value)) {
           return newCreepColor(getCreepHp(value), CREEP_PHASE);
         }
       }
